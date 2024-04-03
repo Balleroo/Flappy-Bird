@@ -14,7 +14,7 @@ class Base:
         self.x = x
         self.y = y
         
-    def movePos(self):
+    def movepos(self):
         self.x -= self.VELOCITY
         if self.x < - self.BASE_GAP:
             self.x = self.BASE_GAP
@@ -64,20 +64,36 @@ class Bird:
             
                 
         pygame.Surface.blit(win,self.image[self.imgDisp], (self.x, self.y))
+    
+    def jump(self):#Update self.y position
+        self.y = 32
         
         
 
 class Pipe:
     
+    VELOCITY = 3
+    RANDOM_LOW = -200
+    RANDOM_HIGH = 200
+    GAP = 400
+    
+    
     def __init__(self,image,x,y):
         self.image = image
         self.x = x
         self.y = y
+        self.mid = random.randint(self.RANDOM_LOW,self.RANDOM_HIGH)
         
     def draw(self,win):
         
-        pygame.Surface.blit(win,self.image, (self.x, self.y))
-        pygame.Surface.blit(win,self.image, (self.x, self.y))
+        pygame.Surface.blit(win,pygame.transform.flip(self.image, False, True) , (self.x, self.mid - self.GAP))
+        pygame.Surface.blit(win,self.image, (self.x, self.mid + self.GAP))
+        
+    def movepos(self):
+        self.x -= self.VELOCITY
+        if self.x <= - 100:
+            self.x = 700  
+            self.mid = random.randint(self.RANDOM_LOW,self.RANDOM_HIGH)
         
 
 
@@ -85,6 +101,7 @@ class Pipe:
 #Initialzing Pygame
 WINDOW_X = 600  #600
 WINDOW_Y = 800  #800
+clockTicker = 0
 pygame.init()
 win = pygame.display.set_mode((WINDOW_X,WINDOW_Y))
 clock = pygame.time.Clock()
@@ -108,7 +125,10 @@ bg = BG(bgImage, 00, -100)
 base1 = Base(baseImage, 0, 700)
 base2 = Base(baseImage, 481,  700)
 bird = Bird(birdImage, 266, 376)
-pipe = Pipe(pipeImage)
+
+pipe1 = Pipe(pipeImage,900,400)
+
+pipe2 = Pipe(pipeImage,1300,400)
 
 #The Pygame being ran in while loop below
 running = True
@@ -126,13 +146,23 @@ while running:
     bird.draw(win)
 
     #Pipe Printing
-    #pipe.draw(win)
-
+    pipe1.draw(win)
+    pipe1.movepos()
+    pipe2.draw(win)
+    pipe2.movepos()
 
     #Base Printing
     base1.draw(win)
-    base1.movePos()
+    base1.movepos()
     base2.draw(win)
-    base2.movePos()
+    base2.movepos()
+    
+    if True in pygame.key.get_pressed():
+        if clockTicker == 0:
+            bird.jump()
+            clockTicker = 30
+            
+    if clockTicker > 0:
+        clockTicker -= 1
     
     pygame.display.flip()
