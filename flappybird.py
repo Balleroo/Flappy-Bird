@@ -1,6 +1,26 @@
 import pygame
 import random
 
+"""Flappy Bird Machine Learning Simulator
+    Displays a playable Flappy Bird Game, but uses Machine learning to be able to solve the game over time
+    Implemented Base, BG, Pipe, and Bird objects to be able to play game
+   
+   
+   Things need to implement:
+   -Hitboxes(with Pipes and Base)
+   -Score in a certain corner
+   -Game Over Screen
+   -Main Menu
+   -Machine learning 
+   -Bird Rotating in middle and not edge(maybe later)
+"""
+
+#GLOBAL VARIABLES
+WINDOW_X = 600
+WINDOW_Y = 800
+clockTicker = 0
+JUMPCLOCKGAP = 10
+MIDDLE = 376
 
 #Objects and Object Methods I need to Add
 class Base:
@@ -35,15 +55,28 @@ class BG:
 class Bird:
     
     TICK = 10
-    WIDTH = 266
     ANIMATION_COUNT = 0
-    imgDisp = 1
-    lastDisp = 2
+    
+    ESCAPE_VEL = 10
+    GRAV = 0.5
+    
+    ROTATE_SPEED = 2.5
     
     def __init__(self,image,x,y):
         self.image = image
         self.x = x
         self.y = y
+        self.vel = 1
+        self.displacement = 0
+    
+        self.imgDisp = 1
+        self.lastDisp = 2
+    
+        self.rotation = 25
+        self.rotatetime = 0
+        
+        
+        
         
     def draw(self,win):
         
@@ -62,11 +95,37 @@ class Bird:
                 self.lastDisp = self.imgDisp
                 self.imgDisp = 1
             
-                
-        pygame.Surface.blit(win,self.image[self.imgDisp], (self.x, self.y))
+            
+        
+        #Speed and displacement update
+        self.vel += self.GRAV 
+        self.displacement += self.vel
+        #Max falling speed determined by Escape veloctiy
+        if self.vel > self.ESCAPE_VEL:
+            self.vel = self.ESCAPE_VEL
+        
+        
+        
+        #Just jumped
+        if self.rotatetime > 0:
+            self.rotatetime -= 1
+        else:
+            #Speed and displacement update
+            self.rotation -= self.ROTATE_SPEED
+            
+        #Rotation wil be at max at -90
+        if self.rotation < -90:
+            self.rotation = -90
+            
+        self.y = self.displacement + MIDDLE
+        
+        pygame.Surface.blit(win,pygame.transform.rotate(self.image[self.imgDisp],self.rotation), (self.x, self.y))
     
-    def jump(self):#Update self.y position
-        self.y = 32
+    def jump(self):
+        self.vel = -8
+        self.rotation = 25
+        self.rotatetime = 25
+        
         
         
 
@@ -78,30 +137,26 @@ class Pipe:
     GAP = 400
     
     
-    def __init__(self,image,x,y):
+    def __init__(self,image,x):
         self.image = image
         self.x = x
-        self.y = y
-        self.mid = random.randint(self.RANDOM_LOW,self.RANDOM_HIGH)
+        self.y = random.randint(self.RANDOM_LOW,self.RANDOM_HIGH)
         
     def draw(self,win):
         
-        pygame.Surface.blit(win,pygame.transform.flip(self.image, False, True) , (self.x, self.mid - self.GAP))
-        pygame.Surface.blit(win,self.image, (self.x, self.mid + self.GAP))
+        pygame.Surface.blit(win,pygame.transform.flip(self.image, False, True) , (self.x, self.y - self.GAP))
+        pygame.Surface.blit(win,self.image, (self.x, self.y + self.GAP))
         
     def movepos(self):
         self.x -= self.VELOCITY
         if self.x <= - 100:
-            self.x = 700  
-            self.mid = random.randint(self.RANDOM_LOW,self.RANDOM_HIGH)
+            self.x = 700 
+            self.y = random.randint(self.RANDOM_LOW,self.RANDOM_HIGH)
         
 
 
 
 #Initialzing Pygame
-WINDOW_X = 600  #600
-WINDOW_Y = 800  #800
-clockTicker = 0
 pygame.init()
 win = pygame.display.set_mode((WINDOW_X,WINDOW_Y))
 clock = pygame.time.Clock()
@@ -124,11 +179,11 @@ pipeImage = pygame.transform.scale2x(pygame.image.load("imgs/pipe.png").convert_
 bg = BG(bgImage, 00, -100)
 base1 = Base(baseImage, 0, 700)
 base2 = Base(baseImage, 481,  700)
-bird = Bird(birdImage, 266, 376)
+bird = Bird(birdImage, 266, MIDDLE)
 
-pipe1 = Pipe(pipeImage,900,400)
+pipe1 = Pipe(pipeImage,900)
 
-pipe2 = Pipe(pipeImage,1300,400)
+pipe2 = Pipe(pipeImage,1300)
 
 #The Pygame being ran in while loop below
 running = True
@@ -145,6 +200,22 @@ while running:
     #Bird Printing
     bird.draw(win)
 
+    if True in pygame.key.get_pressed():
+        if clockTicker == 0:
+            bird.jump()
+            clockTicker = JUMPCLOCKGAP
+            
+    if clockTicker > 0:
+        clockTicker -= 1
+        
+    #Bird to Base collison detector
+    if bird.y + 55 > 700:
+        print("DEAD! ADD END SCREEN!")
+        pygame.time.wait(1000)
+        
+    #Bird to Pipe collison detector
+    
+    
     #Pipe Printing
     pipe1.draw(win)
     pipe1.movepos()
@@ -157,12 +228,5 @@ while running:
     base2.draw(win)
     base2.movepos()
     
-    if True in pygame.key.get_pressed():
-        if clockTicker == 0:
-            bird.jump()
-            clockTicker = 30
-            
-    if clockTicker > 0:
-        clockTicker -= 1
     
     pygame.display.flip()
