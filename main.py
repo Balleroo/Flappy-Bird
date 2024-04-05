@@ -1,8 +1,3 @@
-import pygame
-import random
-import neat
-
-
 """Flappy Bird Machine Learning Simulator
     Displays a playable Flappy Bird Game, but uses Machine learning to be able to solve the game over time
     Implemented Base, BG, Pipe, and Bird objects to be able to play game
@@ -15,13 +10,22 @@ import neat
    -Bird Rotating in middle and not edge(maybe later)
 """
 
+#import libraries
+import pygame
+import random
+import neat
+import os
+
 #GLOBAL VARIABLES
 WINDOW_X = 600 
 WINDOW_Y = 800
-clockTicker = 0
 JUMPCLOCKGAP = 10
 MIDDLE = 376
-score = 0
+
+
+
+#Initialzing Pygame
+pygame.init()
 
 #Objects and Object Methods I need to Add
 class Base:
@@ -127,6 +131,11 @@ class Bird:
             
         self.y = self.displacement + MIDDLE
         
+        #Creates a ceiling for bird
+        if self.y < -10:
+            self.vel = 0
+            self.y = -10
+            
         pygame.Surface.blit(win,pygame.transform.rotate(self.image[self.imgDisp],self.rotation), (self.x, self.y))
     
     def jump(self):
@@ -184,90 +193,172 @@ class Pipe:
         return False
 
 
-#Initialzing Pygame
-pygame.init()
-win = pygame.display.set_mode((WINDOW_X,WINDOW_Y))
-my_font = pygame.font.SysFont('Comic Sans MS', 34)
-clock = pygame.time.Clock()
+def main(genomes, config):
+    
+    win = pygame.display.set_mode((WINDOW_X,WINDOW_Y))
+    my_font = pygame.font.SysFont('Comic Sans MS', 34)
+    clock = pygame.time.Clock()
 
-pygame.display.set_caption('Flappy Bird')
-
-
-#Importing the images needded
-baseImage = pygame.transform.scale2x(pygame.image.load("imgs/base.png").convert_alpha())
-bgImage = pygame.transform.scale(pygame.image.load("imgs/bg.png").convert_alpha(), (600, 900))
-
-birdImage = [0,0,0]
-for i in range(1,4):
-    birdImage[i-1] = pygame.transform.scale2x(pygame.image.load(f"imgs/bird{i}.png").convert_alpha())
-
-pipeImage = pygame.transform.scale2x(pygame.image.load("imgs/pipe.png").convert_alpha())
+    pygame.display.set_caption('Flappy Bird')
+    
+    nets = []
+    ge  = []
+    birds = []
+    birdImage = [0,0,0]
+    for i in range(1,4):
+        birdImage[i-1] = pygame.transform.scale2x(pygame.image.load(f"imgs/bird{i}.png").convert_alpha())
 
 
-#initializing the objects for later use
-bg = BG(bgImage, 00, -100)
-base1 = Base(baseImage, 0, 700)
-base2 = Base(baseImage, 481,  700)
-bird = Bird(birdImage, 266, MIDDLE)
-
-pipe1 = Pipe(pipeImage,900)
-
-pipe2 = Pipe(pipeImage,1300)
-
-#The Pygame being ran in while loop below
-running = True
-while running:
-    clock.tick(60)
-    for event in pygame.event.get(): 
-        if event.type == pygame.QUIT: 
-            running = False
+    for _, g in genomes:
+        net = neat.nn.FeedForwardNetwork.create(g,config)
+        nets.append(net)
+        birds.append(Bird(birdImage, 266, MIDDLE))
+        g.fitness = 0
+        ge.append(g)
         
-    #Background Printing
-    bg.draw(win)
+        
+    #Importing the images needded
+    baseImage = pygame.transform.scale2x(pygame.image.load("imgs/base.png").convert_alpha())
+    bgImage = pygame.transform.scale(pygame.image.load("imgs/bg.png").convert_alpha(), (600, 900))
+    pipeImage = pygame.transform.scale2x(pygame.image.load("imgs/pipe.png").convert_alpha())    
+
+    #initializing the objects for later use
+    bg = BG(bgImage, 00, -100)
+    base1 = Base(baseImage, 0, 700)
+    base2 = Base(baseImage, 481,  700 )
+    
+    pipe1 = Pipe(pipeImage,900)
+    pipe2 = Pipe(pipeImage,1300)
+
+    score = 0
+    clockTicker = 0
+    
+    #The Pygame being ran in while loop below
+    running = True
+    while running and len(birds) > 0:
+        clock.tick(60)
+        
+        for event in pygame.event.get(): 
+            if event.type == pygame.QUIT: 
+                running = False
+                pygame.quit()
+                quit()
+                break
+        
+        #Background Printing
+        bg.draw(win)
+
 
             
-    #Bird Printing
-    bird.draw(win)
-
-    if True in pygame.key.get_pressed():
-        if clockTicker == 0:
-            bird.jump()
-            clockTicker = JUMPCLOCKGAP
+        for x, bird in enumerate(birds):
+            #Bird Printing
+            bird.draw(win)
+            ge[x].fitness += 0.1
             
-    if clockTicker > 0:
-        clockTicker -= 1
+            if len(birds) > 0:
+                if pipe1.pipe_passed == 0 and pipe2.pipe_passed == 0:#CHANGE LATER
+                    if bird.y - pipe1.y > bird.y - pipe2.y:
+                        output = nets[x].activate((bird.y, abs(bird.y - pipe1.y - pipe1.GAP), abs(bird.y - pipe1.y + pipe1.GAP)))
+                        print("1no")
+                    else:
+                        output = nets[x].activate((bird.y, abs(bird.y - pipe2.y - pipe2.GAP), abs(bird.y - pipe2.y + pipe2.GAP)))
+                        print("2no")
+                elif pipe1.pipe_passed == 1:
+                    output = nets[x].activate((bird.y, abs(bird.y - pipe2.y - pipe2.GAP), abs(bird.y - pipe2.y + pipe2.GAP)))
+                    print("2")
+                elif pipe2.pipe_passed == 1:
+                    output = nets[x].activate((bird.y, abs(bird.y - pipe1.y - pipe1.GAP), abs(bird.y - pipe1.y + pipe1.GAP)))
+                    print("1")
+                    
+                if output[0] > 0.5:
+                    bird.jump()
+            else:
+                running = False
+                break
+            
+                        
         
-    #Bird to Base collison detector
-    if bird.y + 48 > 700:
-        print("Bird hit Base")
+        #Bird to Base collison detector
+        for x, bird in enumerate(birds):
+            
+            
+            if bird.y + 48 > 700:
+                birds.pop(x)
+                nets.pop(x)
+                ge.pop(x)
         
-    #Bird to Pipe collison detector
-    if pipe1.hit(bird):
-        print("bird hit pipe1")
-    if pipe2.hit(bird):
-        print("bird hit pipe2")
+            #Bird to Pipe collison detector
+            if pipe1.hit(bird) or pipe2.hit(bird):
+                ge[x].fitness -= 1
+                birds.pop(x)
+                nets.pop(x)
+                ge.pop(x)
     
-    if pipe1.x < bird.x and pipe1.pipe_passed == 0:
-        score += 1
-        pipe1.pipe_passed = 1
-    if pipe2.x < bird.x and pipe2.pipe_passed == 0:
-        score += 1
-        pipe2.pipe_passed = 1
+        #Bird increases score after passing pipe
+        if pipe1.x < MIDDLE - 200 and pipe1.pipe_passed == 0:
+            score += 1
+            pipe1.pipe_passed = 1
+            for g in ge:
+                g.fitness += 2
+        if pipe2.x < MIDDLE - 200 and pipe2.pipe_passed == 0:
+            score += 1
+            pipe2.pipe_passed = 1
+            for g in ge:
+                g.fitness += 2
     
     
-    #Pipe Printing
-    pipe1.draw(win)
-    pipe1.movepos()
-    pipe2.draw(win)
-    pipe2.movepos()
+        #Pipe Printing
+        pipe1.draw(win)
+        pipe1.movepos()
+        pipe2.draw(win)
+        pipe2.movepos()
+        
 
-    #Base Printing
-    base1.draw(win)
-    base1.movepos()
-    base2.draw(win)
-    base2.movepos()
+
+        #Base Printing
+        base1.draw(win)
+        base1.movepos()
+        base2.draw(win)
+        base2.movepos()
     
-    #Score Printing
-    win.blit(my_font.render(f'Score: {score}', False, (255, 255, 255)), (450,0))
+        #Score Printing
+        win.blit(my_font.render(f'Score: {score}', False, (255, 255, 255)), (450,0))
     
-    pygame.display.flip()
+        pygame.display.flip()
+    
+
+
+
+def run(config_file):
+    """
+    runs the NEAT algorithm to train a neural network to play flappy bird.
+    :param config_file: location of config file
+    :return: None
+    """
+    config = neat.config.Config(neat.DefaultGenome, neat.DefaultReproduction,
+                         neat.DefaultSpeciesSet, neat.DefaultStagnation,
+                         config_file)
+
+    # Create the population, which is the top-level object for a NEAT run.
+    p = neat.Population(config)
+
+    # Add a stdout reporter to show progress in the terminal.
+    p.add_reporter(neat.StdOutReporter(True))
+    stats = neat.StatisticsReporter()
+    p.add_reporter(stats)
+    #p.add_reporter(neat.Checkpointer(5))
+
+    # Run for up to 50 generations.
+    winner = p.run(main, 10000) #CHANGE LATER
+
+    # show final stats
+    print('\nBest genome:\n{!s}'.format(winner))
+
+
+if __name__ == '__main__':
+    # Determine path to configuration file. This path manipulation is
+    # here so that the script will run successfully regardless of the
+    # current working directory.
+    local_dir = os.path.dirname(__file__)
+    config_path = os.path.join(local_dir, 'config-feedforward.txt')
+    run(config_path)
