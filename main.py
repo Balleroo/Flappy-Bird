@@ -157,12 +157,12 @@ class Pipe:
     RANDOM_HIGH = 200
     GAP = 400
     
-    pipe_passed = 0
     
     def __init__(self,image,x):
         self.image = image
         self.x = x
         self.y = random.randint(self.RANDOM_LOW,self.RANDOM_HIGH)
+        self.pipe_passed = 0
         
     def draw(self,win):
         
@@ -255,20 +255,22 @@ def main(genomes, config):
             bird.draw(win)
             ge[x].fitness += 0.1
             
-            if len(birds) > 0:
-                if pipe1.pipe_passed == 0 and pipe2.pipe_passed == 0:#CHANGE LATER
-                    if bird.y - pipe1.y > bird.y - pipe2.y:
-                        output = nets[x].activate((bird.y, abs(bird.y - pipe1.y - pipe1.GAP), abs(bird.y - pipe1.y + pipe1.GAP)))
-                        print("1no")
-                    else:
-                        output = nets[x].activate((bird.y, abs(bird.y - pipe2.y - pipe2.GAP), abs(bird.y - pipe2.y + pipe2.GAP)))
-                        print("2no")
-                elif pipe1.pipe_passed == 1:
-                    output = nets[x].activate((bird.y, abs(bird.y - pipe2.y - pipe2.GAP), abs(bird.y - pipe2.y + pipe2.GAP)))
-                    print("2")
-                elif pipe2.pipe_passed == 1:
+            if len(birds) > 0:#CHANGE BELOW LATER
+                if abs(pipe1.x - bird.x ) < abs(pipe2.x - bird.x) and pipe1.pipe_passed == 0 and pipe2.pipe_passed == 0:
                     output = nets[x].activate((bird.y, abs(bird.y - pipe1.y - pipe1.GAP), abs(bird.y - pipe1.y + pipe1.GAP)))
-                    print("1")
+                    print("1no")
+                    
+                elif pipe1.pipe_passed == 1 and pipe2.pipe_passed == 0:
+                    output = nets[x].activate((bird.y, abs(bird.y - pipe2.y - pipe2.GAP), abs(bird.y - pipe2.y + pipe2.GAP)))
+                    print("2, 1 pass")
+                    
+                elif  abs(pipe1.x - bird.y ) > abs(pipe2.x - bird.x) and pipe1.pipe_passed == 0 and pipe2.pipe_passed == 0:
+                    output = nets[x].activate((bird.y, abs(bird.y - pipe2.y - pipe2.GAP), abs(bird.y - pipe2.y + pipe2.GAP)))
+                    print("2, 1 reset")
+                    
+                elif pipe1.pipe_passed == 0 and pipe2.pipe_passed == 1:
+                    output = nets[x].activate((bird.y, abs(bird.y - pipe1.y - pipe1.GAP), abs(bird.y - pipe1.y + pipe1.GAP)))
+                    print("1, 2 pass")
                     
                 if output[0] > 0.5:
                     bird.jump()
