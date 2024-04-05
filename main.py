@@ -258,19 +258,15 @@ def main(genomes, config):
             if len(birds) > 0:#CHANGE BELOW LATER
                 if abs(pipe1.x - bird.x ) < abs(pipe2.x - bird.x) and pipe1.pipe_passed == 0 and pipe2.pipe_passed == 0:
                     output = nets[x].activate((bird.y, abs(bird.y - pipe1.y - pipe1.GAP), abs(bird.y - pipe1.y + pipe1.GAP)))
-                    print("1no")
                     
                 elif pipe1.pipe_passed == 1 and pipe2.pipe_passed == 0:
                     output = nets[x].activate((bird.y, abs(bird.y - pipe2.y - pipe2.GAP), abs(bird.y - pipe2.y + pipe2.GAP)))
-                    print("2, 1 pass")
                     
                 elif  abs(pipe1.x - bird.y ) > abs(pipe2.x - bird.x) and pipe1.pipe_passed == 0 and pipe2.pipe_passed == 0:
                     output = nets[x].activate((bird.y, abs(bird.y - pipe2.y - pipe2.GAP), abs(bird.y - pipe2.y + pipe2.GAP)))
-                    print("2, 1 reset")
                     
                 elif pipe1.pipe_passed == 0 and pipe2.pipe_passed == 1:
                     output = nets[x].activate((bird.y, abs(bird.y - pipe1.y - pipe1.GAP), abs(bird.y - pipe1.y + pipe1.GAP)))
-                    print("1, 2 pass")
                     
                 if output[0] > 0.5:
                     bird.jump()
